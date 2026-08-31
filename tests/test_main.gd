@@ -21,9 +21,14 @@ func _init() -> void:
 	assert_equal(game._best_cpu_move(), 2, "CPU blocks an immediate loss")
 	game.board.assign(["X", "", "", "", "", "", "", "", ""])
 	assert_equal(game._best_cpu_move(), 4, "CPU answers a corner with the center")
+	game.board.assign(["O", "O", "", "X", "X", "", "", "", ""])
+	assert_equal(game._tactical_move("O"), 2, "tactical CPU spots its winning move")
+	game.board.assign(["X", "X", "", "O", "", "", "", "", ""])
+	assert_equal(game._tactical_cpu_move(), 2, "tactical CPU blocks an immediate loss")
 
 	game.vs_cpu = false
 	game._start_new_round()
+	assert_equal(game.status_label.text, "PLAYER X TO MOVE", "local turn prompt reads naturally")
 	game._cell_pressed(0)
 	game._cell_pressed(3)
 	game._cell_pressed(1)
@@ -31,7 +36,41 @@ func _init() -> void:
 	game._cell_pressed(2)
 	assert_equal(game.game_over, true, "local round ends after a win")
 	assert_equal(game.winning_cells, [0, 1, 2], "winning cells are retained for highlighting")
-	game._clear_score()
+	assert_equal(game.status_label.text, "PLAYER X WINS", "local win message agrees with its subject")
+	assert_equal(game.round_button.text, "PLAY AGAIN", "finished round offers a replay")
+	game._request_score_reset()
+	await process_frame
+	assert_equal(game.reset_armed, true, "score reset asks for confirmation")
+	assert_equal(game.clear_button.text, "CONFIRM RESET", "score reset labels the confirm action")
+	game._request_score_reset()
+	await process_frame
+	assert_equal(game.scores["local"]["x"], 0, "confirmed score reset clears the current mode")
+	assert_equal(game.clear_button.text, "RESET SCORES", "score reset returns to its default label")
+
+	game.vs_cpu = true
+	assert_equal(game._win_message("X"), "YOU WIN", "one-player win addresses the player directly")
+	assert_equal(game._win_message("O"), "CPU WINS", "CPU win uses grammatical agreement")
+	game.vs_cpu = false
+	game.board.assign(["X", "O", "X", "X", "O", "O", "O", "X", "X"])
+	game.game_over = true
+	game.winning_cells.clear()
+	game._update_ui()
+	assert_equal(game.status_label.text, "DRAW — BOARD FULL", "draw message explains the result")
+	assert_equal(game.about_overlay.visible, false, "about screen starts closed")
+	game._show_about()
+	assert_equal(game.about_overlay.visible, true, "about button opens the credits screen")
+	assert_equal(
+		"infra-tools agentic VMs" in game.about_body_label.text,
+		true,
+		"about screen explains the game's purpose"
+	)
+	assert_equal(
+		"Apache License, Version 2.0" in game.about_body_label.text,
+		true,
+		"about screen identifies the project license"
+	)
+	game._hide_about()
+	assert_equal(game.about_overlay.visible, false, "about screen returns to the game")
 
 	if failures == 0:
 		print("PASS: all gameplay checks")
