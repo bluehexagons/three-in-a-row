@@ -30,16 +30,21 @@ deploys the web export to GitHub Pages and attaches an itch.io-compatible ZIP
 to the GitHub release. Ordinary branch pushes and pull requests do not run the
 workflow.
 
+GitHub repository setup is required once: select **GitHub Actions** as the
+Pages source, then allow the `v*` tag pattern in the `github-pages`
+environment's deployment branches and tags. This keeps Pages deployments
+restricted to version tags.
+
 From a clean, up-to-date `main` branch, pass the next version explicitly:
 
 ```bash
 ./release.sh 0.1
 ```
 
-The script updates the project version, runs the tests and a Web export,
-creates a release commit and annotated tag, then pushes the branch and tag
-atomically. With no argument, it increments the last numeric component of the
-current version.
+The script requires local `main` to exactly match `origin/main`, updates the
+project version, runs the tests and a Web export, creates a release commit and
+annotated tag, then pushes the branch and tag atomically. With no argument, it
+increments the last numeric component of the current version.
 
 ## License
 

@@ -123,3 +123,29 @@ Suggested next improvements:
 - `--all-capabilities` is comprehensive and useful for support capture. A compact summary mode could make routine agent preflight easier to scan while retaining the full JSON form for diagnostics.
 
 Overall, the refresh turned the original feedback loop into a satisfying verification exercise: six concrete issues were fully resolved, one was materially improved, and the remaining problem is narrowly scoped to collaborative-preview attachment lifecycle.
+
+## Public Pages preview follow-up (2026-08-31)
+
+I exercised the T3 preview again after publishing the game to a public GitHub
+Pages URL. `preview_status` reported an available automation host, and
+`preview_open` loaded the correct URL and page title into `tab_6`. The
+attachment remained present afterward, so this was different from the earlier
+host-disconnection failure.
+
+Automation against the loaded Godot page was nevertheless unusable:
+
+- `preview_snapshot` failed twice, once with the explicit tab and once through
+  the session's current tab.
+- `preview_evaluate` and `preview_recording_start` each timed out after 15
+  seconds.
+- A subsequent `preview_status` still reported the tab as available, fully
+  loaded, and at the expected URL.
+
+This suggests a second failure mode beyond attachment lifecycle: the browser
+connection stays healthy while page-level automation stalls on the Godot
+WebGL document. It would help if preview errors distinguished transport,
+page-main-thread, screenshot, and recording timeouts. Browser-level screenshot
+capture and a safe “reset automation for this tab” operation would also give
+agents a recovery path when evaluation cannot run. Returning recent console
+and network diagnostics with the timeout would make it easier to tell an
+application hang from an automation integration problem.

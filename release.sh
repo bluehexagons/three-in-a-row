@@ -66,8 +66,8 @@ fi
 git fetch --quiet "$remote" \
 	"+refs/heads/$branch:refs/remotes/$remote/$branch"
 remote_branch="$remote/$branch"
-git merge-base --is-ancestor "$remote_branch" HEAD \
-  || fail "$branch is behind or has diverged from $remote_branch"
+[[ "$(git rev-parse HEAD)" == "$(git rev-parse "$remote_branch")" ]] \
+	|| fail "$branch must exactly match $remote_branch before preparing a release"
 
 release_tmp="$(mktemp -d)"
 version_updated=false
