@@ -6,16 +6,23 @@ const Backdrop := preload("res://backdrop.gd")
 const MarkCell := preload("res://mark_cell.gd")
 const WinLine := preload("res://win_line.gd")
 
-const PAPER := Color("eee9dc")
-const PANEL := Color("20282c")
-const CELL := Color("f6f1e7")
-const CELL_HOVER := Color("e2dccb")
-const X_COLOR := Color("2f6793")
-const O_COLOR := Color("c95135")
-const WIN_COLOR := Color("f0d77f")
-const TEXT := Color("20282c")
-const MUTED := Color("69716e")
-const ACCENT := Color("d5a82e")
+var PAPER := Color("eee9dc")
+var PANEL := Color("20282c")
+var CELL := Color("f6f1e7")
+var CELL_HOVER := Color("e2dccb")
+var X_COLOR := Color("2f6793")
+var O_COLOR := Color("c95135")
+var WIN_COLOR := Color("f0d77f")
+var TEXT := Color("20282c")
+var MUTED := Color("69716e")
+var ACCENT := Color("d5a82e")
+var ACCENT_TEXT := Color("20282c")
+var SHADOW := Color("20282c")
+var CONTROL_ALT := Color("dae4e5")
+var CONTROL_HOVER := Color("e2dccb")
+var CONTROL_PRESSED := Color("eadb9d")
+var ACCENT_HOVER := Color("e4bf58")
+var SHEET_TURN := Color("d8cfb9")
 const SAVE_PATH := "user://match_scores.cfg"
 const ROUND_TURN_OUT_SECONDS := 0.22
 const ROUND_TURN_IN_SECONDS := 0.30
@@ -36,6 +43,8 @@ var cpu_level := 1
 var round_id := 0
 var reset_request_id := 0
 var reset_armed := false
+var dark_mode := false
+var theme_preference := "system"
 var winning_cells: Array[int] = []
 var scores := {
 	"cpu": {"x": 0, "o": 0, "draws": 0},
@@ -54,12 +63,14 @@ var score_o_card: PanelContainer
 var cpu_button: Button
 var local_button: Button
 var difficulty_button: Button
+var theme_button: Button
 var round_button: Button
 var clear_button: Button
 var about_button: Button
 var about_overlay: Control
 var about_close_button: Button
 var about_body_label: Label
+var backdrop: Control
 var board_card: PanelContainer
 var win_line: Control
 var round_transition_tween: Tween
@@ -69,6 +80,8 @@ var rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	rng.randomize()
 	_load_scores()
+	dark_mode = _resolved_dark_mode(theme_preference, _browser_prefers_dark())
+	_apply_palette_values()
 	_build_ui()
 	_update_ui()
 	call_deferred("_play_intro")
@@ -88,12 +101,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_start_new_round()
 	elif key == "D" and vs_cpu:
 		_cycle_difficulty()
+	elif key == "T":
+		_toggle_theme()
 
 
 func _build_ui() -> void:
-	var background := Backdrop.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
+	backdrop = Backdrop.new()
+	backdrop.set_palette(PAPER, TEXT, X_COLOR, O_COLOR, ACCENT)
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(backdrop)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -139,12 +155,26 @@ func _build_ui() -> void:
 	difficulty_button.tooltip_text = "Change CPU difficulty (D)"
 	difficulty_button.add_theme_font_size_override("font_size", 13)
 	_set_button_text_colors(difficulty_button, TEXT)
-	difficulty_button.add_theme_stylebox_override("normal", _button_style(Color("dae4e5")))
-	difficulty_button.add_theme_stylebox_override("hover", _button_style(Color("eadb9d")))
+	_set_pressed_text_color(difficulty_button, ACCENT_TEXT)
+	difficulty_button.add_theme_stylebox_override("normal", _button_style(CONTROL_ALT))
+	difficulty_button.add_theme_stylebox_override("hover", _button_style(CONTROL_PRESSED))
 	difficulty_button.add_theme_stylebox_override("pressed", _button_style(X_COLOR))
 	difficulty_button.add_theme_stylebox_override("focus", _focus_style(X_COLOR))
 	difficulty_button.pressed.connect(_cycle_difficulty)
 	mode_row.add_child(difficulty_button)
+	theme_button = Button.new()
+	theme_button.custom_minimum_size = Vector2(106, 42)
+	theme_button.focus_mode = Control.FOCUS_ALL
+	theme_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	theme_button.add_theme_font_size_override("font_size", 12)
+	_set_button_text_colors(theme_button, TEXT)
+	_set_pressed_text_color(theme_button, ACCENT_TEXT)
+	theme_button.add_theme_stylebox_override("normal", _button_style(PAPER))
+	theme_button.add_theme_stylebox_override("hover", _button_style(CONTROL_HOVER))
+	theme_button.add_theme_stylebox_override("pressed", _button_style(ACCENT))
+	theme_button.add_theme_stylebox_override("focus", _focus_style(X_COLOR))
+	theme_button.pressed.connect(_toggle_theme)
+	mode_row.add_child(theme_button)
 
 	var scoreboard := HBoxContainer.new()
 	scoreboard.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -178,11 +208,12 @@ func _build_ui() -> void:
 	for i in 9:
 		var button := MarkCell.new()
 		button.custom_minimum_size = Vector2(150, 150)
+		button.set_underprint(SHADOW)
 		button.focus_mode = Control.FOCUS_ALL
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.add_theme_stylebox_override("normal", _cell_style(CELL))
 		button.add_theme_stylebox_override("hover", _cell_style(CELL_HOVER))
-		button.add_theme_stylebox_override("pressed", _cell_style(Color("eadb9d")))
+		button.add_theme_stylebox_override("pressed", _cell_style(CONTROL_PRESSED))
 		button.add_theme_stylebox_override("disabled", _cell_style(CELL))
 		button.add_theme_stylebox_override("focus", _focus_style(X_COLOR))
 		button.tooltip_text = "Square %d — press %d" % [i + 1, i + 1]
@@ -190,6 +221,7 @@ func _build_ui() -> void:
 		grid.add_child(button)
 		cells.append(button)
 	win_line = WinLine.new()
+	win_line.set_palette(TEXT, ACCENT)
 	win_line.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	board_card.add_child(win_line)
 
@@ -216,8 +248,9 @@ func _build_ui() -> void:
 	round_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	round_button.add_theme_font_size_override("font_size", 16)
 	round_button.add_theme_stylebox_override("normal", _button_style(ACCENT))
-	_set_button_text_colors(round_button, TEXT)
-	round_button.add_theme_stylebox_override("hover", _button_style(Color("e4bf58")))
+	_set_button_text_colors(round_button, ACCENT_TEXT)
+	round_button.add_theme_color_override("font_focus_color", TEXT)
+	round_button.add_theme_stylebox_override("hover", _button_style(ACCENT_HOVER))
 	round_button.add_theme_stylebox_override("focus", _focus_style(X_COLOR))
 	round_button.pressed.connect(_start_new_round)
 	controls.add_child(round_button)
@@ -229,7 +262,7 @@ func _build_ui() -> void:
 	clear_button.add_theme_font_size_override("font_size", 14)
 	_set_button_text_colors(clear_button, MUTED)
 	clear_button.add_theme_stylebox_override("normal", _button_style(PAPER))
-	clear_button.add_theme_stylebox_override("hover", _button_style(Color("e2dccb")))
+	clear_button.add_theme_stylebox_override("hover", _button_style(CONTROL_HOVER))
 	clear_button.add_theme_stylebox_override("focus", _focus_style(O_COLOR))
 	clear_button.pressed.connect(_request_score_reset)
 	controls.add_child(clear_button)
@@ -242,13 +275,13 @@ func _build_ui() -> void:
 	about_button.add_theme_font_size_override("font_size", 14)
 	_set_button_text_colors(about_button, TEXT)
 	about_button.add_theme_stylebox_override("normal", _button_style(PAPER))
-	about_button.add_theme_stylebox_override("hover", _button_style(Color("dae4e5")))
+	about_button.add_theme_stylebox_override("hover", _button_style(CONTROL_ALT))
 	about_button.add_theme_stylebox_override("focus", _focus_style(X_COLOR))
 	about_button.pressed.connect(_show_about)
 	controls.add_child(about_button)
 
 	var hint := Label.new()
-	hint.text = "KEYS 1–9: PLACE MARK   /   R: NEW ROUND   /   D: DIFFICULTY"
+	hint.text = "KEYS 1–9: MARK   /   R: NEW ROUND   /   D: DIFFICULTY   /   T: THEME"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", MUTED)
@@ -265,7 +298,7 @@ func _build_about_overlay() -> void:
 	add_child(about_overlay)
 
 	var scrim := ColorRect.new()
-	scrim.color = Color(TEXT, 0.82)
+	scrim.color = Color(SHADOW, 0.86)
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scrim.mouse_filter = Control.MOUSE_FILTER_STOP
 	about_overlay.add_child(scrim)
@@ -319,9 +352,10 @@ func _build_about_overlay() -> void:
 	about_close_button.focus_mode = Control.FOCUS_ALL
 	about_close_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	about_close_button.add_theme_font_size_override("font_size", 15)
-	_set_button_text_colors(about_close_button, TEXT)
+	_set_button_text_colors(about_close_button, ACCENT_TEXT)
+	about_close_button.add_theme_color_override("font_focus_color", TEXT)
 	about_close_button.add_theme_stylebox_override("normal", _button_style(ACCENT))
-	about_close_button.add_theme_stylebox_override("hover", _button_style(Color("e4bf58")))
+	about_close_button.add_theme_stylebox_override("hover", _button_style(ACCENT_HOVER))
 	about_close_button.add_theme_stylebox_override("focus", _focus_style(X_COLOR))
 	about_close_button.pressed.connect(_hide_about)
 	stack.add_child(about_close_button)
@@ -337,8 +371,9 @@ func _mode_button(label_text: String, selected: bool) -> Button:
 	button.custom_minimum_size = Vector2(150, 42)
 	button.add_theme_font_size_override("font_size", 14)
 	_set_button_text_colors(button, TEXT)
+	_set_pressed_text_color(button, ACCENT_TEXT)
 	button.add_theme_stylebox_override("normal", _button_style(PAPER))
-	button.add_theme_stylebox_override("hover", _button_style(Color("e2dccb")))
+	button.add_theme_stylebox_override("hover", _button_style(CONTROL_HOVER))
 	button.add_theme_stylebox_override("pressed", _button_style(ACCENT))
 	button.add_theme_stylebox_override("focus", _focus_style(X_COLOR))
 	return button
@@ -353,6 +388,11 @@ func _set_button_text_colors(button: Button, color: Color) -> void:
 		"font_focus_color"
 	]:
 		button.add_theme_color_override(property, color)
+
+
+func _set_pressed_text_color(button: Button, color: Color) -> void:
+	button.add_theme_color_override("font_pressed_color", color)
+	button.add_theme_color_override("font_hover_pressed_color", color)
 
 
 func _score_card(label_text: String, color: Color) -> Array:
@@ -393,7 +433,7 @@ func _panel_style() -> StyleBoxFlat:
 	style.border_width_right = 3
 	style.border_width_bottom = 3
 	style.border_color = TEXT
-	style.shadow_color = Color(TEXT, 0.42)
+	style.shadow_color = Color(SHADOW, 0.52)
 	style.shadow_size = 2
 	style.shadow_offset = Vector2(8.0, 8.0)
 	return style
@@ -455,7 +495,7 @@ func _score_card_style(color: Color, active: bool) -> StyleBoxFlat:
 	style.content_margin_top = 7
 	style.content_margin_bottom = 7
 	if active:
-		style.bg_color = color.lightened(0.72)
+		style.bg_color = color.darkened(0.58) if dark_mode else color.lightened(0.72)
 		style.border_color = TEXT
 		style.border_width_bottom = 7
 	return style
@@ -471,7 +511,7 @@ func _about_style() -> StyleBoxFlat:
 	style.border_width_top = 4
 	style.border_width_right = 4
 	style.border_width_bottom = 4
-	style.shadow_color = Color(TEXT, 0.5)
+	style.shadow_color = Color(SHADOW, 0.62)
 	style.shadow_size = 3
 	style.shadow_offset = Vector2(10.0, 10.0)
 	return style
@@ -650,6 +690,8 @@ func _update_ui() -> void:
 	local_button.button_pressed = not vs_cpu
 	difficulty_button.visible = vs_cpu
 	difficulty_button.text = "DIFFICULTY: %s" % _difficulty_name()
+	theme_button.text = "LIGHT MODE" if dark_mode else "DARK MODE"
+	theme_button.tooltip_text = "Switch to %s mode (T)" % ("light" if dark_mode else "dark")
 	score_x_card.add_theme_stylebox_override("panel", _score_card_style(X_COLOR, not game_over and not round_transitioning and turn == "X"))
 	score_o_card.add_theme_stylebox_override("panel", _score_card_style(O_COLOR, not game_over and not round_transitioning and turn == "O"))
 	round_button.disabled = round_transitioning
@@ -657,8 +699,13 @@ func _update_ui() -> void:
 	cpu_button.disabled = round_transitioning
 	local_button.disabled = round_transitioning
 	difficulty_button.disabled = round_transitioning
-	if not reset_armed:
+	theme_button.disabled = round_transitioning
+	if reset_armed:
+		clear_button.text = "CONFIRM RESET"
+		clear_button.add_theme_color_override("font_color", O_COLOR)
+	else:
 		clear_button.text = "RESET SCORES"
+		clear_button.add_theme_color_override("font_color", MUTED)
 
 
 func _win_message(mark: String) -> String:
@@ -707,6 +754,88 @@ func _cycle_difficulty() -> void:
 	tween.tween_property(difficulty_button, "scale", Vector2.ONE, 0.13)
 
 
+func _toggle_theme() -> void:
+	if round_transitioning:
+		return
+	_set_dark_mode(not dark_mode, true)
+
+
+func _set_dark_mode(enabled: bool, remember_choice: bool) -> void:
+	dark_mode = enabled
+	if remember_choice:
+		theme_preference = "dark" if dark_mode else "light"
+		_save_scores()
+	_apply_palette_values()
+	call_deferred("_rebuild_ui_for_theme")
+
+
+func _rebuild_ui_for_theme() -> void:
+	for child in get_children():
+		child.free()
+	cells.clear()
+	_build_ui()
+	_update_ui()
+	theme_button.grab_focus()
+
+
+func _resolved_dark_mode(preference: String, system_prefers_dark: bool) -> bool:
+	if preference == "dark":
+		return true
+	if preference == "light":
+		return false
+	return system_prefers_dark
+
+
+func _browser_prefers_dark() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	var result = JavaScriptBridge.eval(
+		"window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches",
+		true
+	)
+	return bool(result)
+
+
+func _apply_palette_values() -> void:
+	if dark_mode:
+		PAPER = Color("171b1d")
+		PANEL = Color("0d1113")
+		CELL = Color("22292c")
+		CELL_HOVER = Color("303a3e")
+		X_COLOR = Color("72acd0")
+		O_COLOR = Color("eb8067")
+		WIN_COLOR = Color("554922")
+		TEXT = Color("e8e2d5")
+		MUTED = Color("a5aaa5")
+		ACCENT = Color("d8ad3d")
+		ACCENT_TEXT = Color("171b1d")
+		SHADOW = Color("050708")
+		CONTROL_ALT = Color("273238")
+		CONTROL_HOVER = Color("323c40")
+		CONTROL_PRESSED = Color("5d5027")
+		ACCENT_HOVER = Color("e8c45b")
+		SHEET_TURN = Color("71808a")
+	else:
+		PAPER = Color("eee9dc")
+		PANEL = Color("20282c")
+		CELL = Color("f6f1e7")
+		CELL_HOVER = Color("e2dccb")
+		X_COLOR = Color("2f6793")
+		O_COLOR = Color("c95135")
+		WIN_COLOR = Color("f0d77f")
+		TEXT = Color("20282c")
+		MUTED = Color("69716e")
+		ACCENT = Color("d5a82e")
+		ACCENT_TEXT = Color("20282c")
+		SHADOW = Color("20282c")
+		CONTROL_ALT = Color("dae4e5")
+		CONTROL_HOVER = Color("e2dccb")
+		CONTROL_PRESSED = Color("eadb9d")
+		ACCENT_HOVER = Color("e4bf58")
+		SHEET_TURN = Color("d8cfb9")
+	RenderingServer.set_default_clear_color(PAPER)
+
+
 func _difficulty_name() -> String:
 	return CPU_LEVELS[cpu_level]
 
@@ -736,7 +865,7 @@ func _start_new_round() -> void:
 	round_transition_tween.parallel().tween_property(
 		board_card,
 		"modulate",
-		Color("d8cfb9"),
+		SHEET_TURN,
 		ROUND_TURN_OUT_SECONDS
 	)
 	round_transition_tween.tween_callback(_swap_round_sheet)
@@ -827,6 +956,8 @@ func _load_scores() -> void:
 		for key in ["x", "o", "draws"]:
 			scores[mode][key] = maxi(0, int(config.get_value(mode, key, 0)))
 	cpu_level = clampi(int(config.get_value("settings", "cpu_level", 1)), 0, CPU_LEVELS.size() - 1)
+	var stored_theme := str(config.get_value("settings", "theme", "system"))
+	theme_preference = stored_theme if stored_theme in ["system", "light", "dark"] else "system"
 
 
 func _save_scores() -> void:
@@ -835,6 +966,7 @@ func _save_scores() -> void:
 		for key in ["x", "o", "draws"]:
 			config.set_value(mode, key, scores[mode][key])
 	config.set_value("settings", "cpu_level", cpu_level)
+	config.set_value("settings", "theme", theme_preference)
 	config.save(SAVE_PATH)
 
 

@@ -175,3 +175,34 @@ under `~/.local/state/infra_tools/playwright-mcp`. Its screenshots carried only
 the documented Chromium `ReadPixels` warnings, with zero application errors.
 The fallback remains valuable for VM-origin checks, but it was not needed to
 work around the game once T3 was restored.
+
+## Dark-mode validation and upstream follow-through (2026-08-31)
+
+The collaborative preview materially improved this pass. Its appearance
+emulation let me initialize the Web export with a dark browser preference,
+which exposed a JavaScriptBridge boolean-coercion bug that native Godot tests
+could not reproduce. Rapid screenshots of the live canvas then caught a
+low-contrast selected button and an invisible focused About button. Both were
+fixed before commit. The same controls and palette also rendered cleanly in an
+iPhone-sized viewport.
+
+One additional readiness distinction emerged: `preview_navigate` reached its
+browser load milestone while Godot was still displaying its WebAssembly splash
+screen. A later snapshot showed the initialized game. For WebGL/WASM projects,
+a loader frame proves that the document rendered but not that the application
+is ready.
+
+I applied these observations directly to the infra-tools repository's managed
+browser-testing skill and browser automation guide. The updated guidance now:
+
+- treats minimized T3, a closed preview pane, and an unattached browser host as
+  normal coverage states rather than application failures;
+- limits capture retries when an available tab is invisible and tells agents
+  to reuse it after T3 is restored;
+- continues with the managed VM-origin fallback or safe non-browser checks
+  when collaborative automation is unavailable; and
+- distinguishes a WebAssembly/WebGL loader from the expected application
+  frame with a bounded readiness retry.
+
+The skill validator and focused managed-skill installation tests pass with the
+new instructions.

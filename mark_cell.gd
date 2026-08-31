@@ -1,9 +1,8 @@
 extends Button
 
-const UNDERPRINT := Color("20282c")
-
 var mark := ""
 var mark_color := Color.WHITE
+var underprint := Color("20282c")
 var reveal := 0.0:
 	set(value):
 		reveal = clampf(value, 0.0, 1.0)
@@ -17,6 +16,11 @@ func set_mark(value: String, color: Color) -> void:
 		return
 	mark = value
 	reveal = 0.0
+	queue_redraw()
+
+
+func set_underprint(color: Color) -> void:
+	underprint = color
 	queue_redraw()
 
 
@@ -47,10 +51,10 @@ func _draw_x(center: Vector2, radius: float, pen_width: float) -> void:
 func _draw_o(center: Vector2, radius: float, pen_width: float) -> void:
 	var start_angle := -PI * 0.5
 	var end_angle := start_angle + TAU * reveal
-	draw_arc(center + Vector2(3.0, 3.0), radius, start_angle, end_angle, 48, UNDERPRINT, pen_width + 3.0, true)
+	draw_arc(center + Vector2(3.0, 3.0), radius, start_angle, end_angle, 48, underprint, pen_width + 3.0, true)
 	draw_arc(center, radius, start_angle, end_angle, 48, mark_color, pen_width, true)
 
 
 func _draw_print_stroke(start: Vector2, finish: Vector2, pen_width: float) -> void:
-	draw_line(start + Vector2(3.0, 3.0), finish + Vector2(3.0, 3.0), UNDERPRINT, pen_width + 3.0, true)
+	draw_line(start + Vector2(3.0, 3.0), finish + Vector2(3.0, 3.0), underprint, pen_width + 3.0, true)
 	draw_line(start, finish, mark_color, pen_width, true)

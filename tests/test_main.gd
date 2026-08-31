@@ -25,6 +25,34 @@ func _init() -> void:
 	assert_equal(game._tactical_move("O"), 2, "tactical CPU spots its winning move")
 	game.board.assign(["X", "X", "", "O", "", "", "", "", ""])
 	assert_equal(game._tactical_cpu_move(), 2, "tactical CPU blocks an immediate loss")
+	assert_equal(game._resolved_dark_mode("system", true), true, "system theme follows dark preference")
+	assert_equal(game._resolved_dark_mode("system", false), false, "system theme follows light preference")
+	assert_equal(game._resolved_dark_mode("dark", false), true, "explicit dark theme overrides the system")
+	assert_equal(game._resolved_dark_mode("light", true), false, "explicit light theme overrides the system")
+	var original_dark_mode: bool = game.dark_mode
+	game._set_dark_mode(not original_dark_mode, false)
+	await process_frame
+	assert_equal(game.dark_mode, not original_dark_mode, "theme can be changed on screen")
+	assert_equal(
+		game.theme_button.text,
+		"LIGHT MODE" if game.dark_mode else "DARK MODE",
+		"theme toggle names the available mode"
+	)
+	assert_equal(game.backdrop.paper, game.PAPER, "backdrop receives the active theme palette")
+	assert_equal(game.cells[0].underprint, game.SHADOW, "drawn marks receive the active shadow color")
+	assert_equal(game.win_line.marker, game.ACCENT, "win line receives the active accent color")
+	assert_equal(
+		game.theme_button.get_theme_color("font_pressed_color"),
+		game.ACCENT_TEXT,
+		"accent controls retain contrasting text"
+	)
+	assert_equal(
+		game.about_close_button.get_theme_color("font_focus_color"),
+		game.TEXT,
+		"focused accent buttons retain contrasting text"
+	)
+	game._set_dark_mode(original_dark_mode, false)
+	await process_frame
 
 	game.vs_cpu = false
 	game.board.assign(["X", "", "", "", "", "", "", "", ""])
