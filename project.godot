@@ -1,6 +1,6 @@
 [application]
 config/name="Tic-Tac-Toe"
-config/version="0.0"
+config/version="0.1"
 run/main_scene="res://main.tscn"
 
 [display]
