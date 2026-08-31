@@ -1,0 +1,104 @@
+name: Release web build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: pages-release
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  release:
+    name: Build, publish, and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify the tag matches the project version
+        shell: bash
+        run: |
+          project_version="$(sed -n 's/^config\/version="\([^"]*\)"$/\1/p' project.godot)"
+          if [[ ! "$project_version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            printf 'Invalid application/config/version: %s\n' "$project_version" >&2
+            exit 1
+          fi
+          if [[ "$GITHUB_REF_NAME" != "v$project_version" ]]; then
+            printf 'Tag %s does not match project version %s\n' \
+              "$GITHUB_REF_NAME" "$project_version" >&2
+            exit 1
+          fi
+          printf 'GAME_VERSION=%s\n' "$project_version" >> "$GITHUB_ENV"
+
+      - name: Install Godot and export templates
+        uses: chickensoft-games/setup-godot@c233594225991af5aec714e52457cc76d6df8fa2 # v2.4.2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Run gameplay tests
+        run: godot --headless --path . --script tests/test_main.gd
+
+      - name: Export and package the web build
+        shell: bash
+        run: |
+          mkdir -p build release
+          godot --headless --path . --export-release Web build/index.html
+          test -s build/index.html
+          cp LICENSE build/LICENSE.txt
+          archive="three-in-a-row-${GAME_VERSION}-web.zip"
+          (cd build && zip -9 -r "../release/$archive" .)
+          unzip -Z1 "release/$archive" | grep -Fx index.html
+          touch build/.nojekyll
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: build
+          retention-days: 1
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+
+      - name: Create the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          archive="release/three-in-a-row-${GAME_VERSION}-web.zip"
+          notes_file="$RUNNER_TEMP/release-notes.md"
+          {
+            printf 'Play this release on [GitHub Pages](%s).\n\n' "$PAGES_URL"
+            printf 'The attached ZIP has `index.html` at its root and is ready to upload as an itch.io HTML game.\n'
+          } > "$notes_file"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$archive" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$archive" \
+              --verify-tag \
+              --title "Three in a Row $GITHUB_REF_NAME" \
+              --notes-file "$notes_file"
+          fi

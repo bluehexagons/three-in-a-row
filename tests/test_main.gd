@@ -69,6 +69,12 @@ func _init() -> void:
 		true,
 		"about screen identifies the project license"
 	)
+	var project_version := str(ProjectSettings.get_setting("application/config/version"))
+	assert_equal(
+		"VERSION %s" % project_version in game.about_body_label.text,
+		true,
+		"about screen reads its version from project settings"
+	)
 	game._hide_about()
 	assert_equal(game.about_overlay.visible, false, "about screen returns to the game")
 

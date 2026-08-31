@@ -289,11 +289,13 @@ func _build_about_overlay() -> void:
 	stack.add_child(rule)
 
 	about_body_label = Label.new()
+	var game_version := str(ProjectSettings.get_setting("application/config/version", "development"))
 	about_body_label.text = (
 		"THREE IN A ROW is a small Godot web game built to test "
 		+ "infra-tools agentic VMs and Godot web development.\n\n"
 		+ "CREATED BY\nLoren Crain, with coding agents running on infra-tools\n\n"
 		+ "BUILT WITH\nGodot Engine\n\n"
+		+ "VERSION %s\n\n" % game_version
 		+ "Copyright © 2026 Loren Crain\n"
 		+ "Licensed under the Apache License, Version 2.0."
 	)
