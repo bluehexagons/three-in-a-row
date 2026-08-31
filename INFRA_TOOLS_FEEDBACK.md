@@ -124,28 +124,54 @@ Suggested next improvements:
 
 Overall, the refresh turned the original feedback loop into a satisfying verification exercise: six concrete issues were fully resolved, one was materially improved, and the remaining problem is narrowly scoped to collaborative-preview attachment lifecycle.
 
-## Public Pages preview follow-up (2026-08-31)
+## Second refresh and minimized-preview correction (2026-08-31)
 
-I exercised the T3 preview again after publishing the game to a public GitHub
-Pages URL. `preview_status` reported an available automation host, and
-`preview_open` loaded the correct URL and page title into `tab_6`. The
-attachment remained present afterward, so this was different from the earlier
-host-disconnection failure.
+I repeated the workflow after another setup run. `infra-tools --version` still
+reports 2.0.0, while the capability report identifies T3 Code 0.0.37. The
+development, browser, host, and T3 Code capabilities were all healthy. Godot
+4.7.2 and its Web templates were ready without repair, and structured Godot
+publication replaced the existing build in 6.028 seconds.
 
-Automation against the loaded Godot page was nevertheless unusable:
+The initial T3 result looked like a regression: navigation reached both the
+public GitHub Pages build and the private managed HTTPS build, but the tab
+reported `visible: false` and snapshots failed with `UnknownVizError`. The
+connected T3 application was minimized at the time. Once it was restored:
 
-- `preview_snapshot` failed twice, once with the explicit tab and once through
-  the session's current tab.
-- `preview_evaluate` and `preview_recording_start` each timed out after 15
-  seconds.
-- A subsequent `preview_status` still reported the tab as available, fully
-  loaded, and at the expected URL.
+- `preview_status` changed to `visible: true` without reopening or navigating
+  the tab.
+- The next snapshot completed in under a second with a full WebGL frame,
+  canvas bounds, console output, and no application errors.
+- Safe coordinate clicking switched game modes, and keyboard input placed
+  marks without an unsafe evaluation tool.
+- Pressing `R` followed immediately by a snapshot caught the new round
+  animation at its edge-on midpoint; a second snapshot confirmed the cleared
+  board and restored controls.
 
-This suggests a second failure mode beyond attachment lifecycle: the browser
-connection stays healthy while page-level automation stalls on the Godot
-WebGL document. It would help if preview errors distinguished transport,
-page-main-thread, screenshot, and recording timeouts. Browser-level screenshot
-capture and a safe “reset automation for this tab” operation would also give
-agents a recovery path when evaluation cannot run. Returning recent console
-and network diagnostics with the timeout would make it easier to tell an
-application hang from an automation integration problem.
+This corrects my initial diagnosis during this pass: the failed captures were
+not evidence of a Godot page-main-thread stall. They were tied to the minimized
+T3 window. The refreshed collaborative path works very well when the
+application is visible and is now capable of low-latency animation evidence
+that the VM-local fallback's settle delay cannot capture as precisely.
+
+### Fresh feedback
+
+1. Distinguish a minimized application from a hidden but automation-capable
+   preview. The browser-testing guidance correctly says `visible: false` can
+   still be usable, so status needs a separate window-state or
+   capture-capability field.
+2. Fail snapshots fast with a specific `window_minimized` or
+   `capture_unavailable` result and a “restore T3 Code” remediation. An
+   `UnknownVizError` led to unnecessary retries and fallback diagnostics.
+3. The snapshot action timeline reports the snapshot currently producing the
+   response as `running`; it changes to `succeeded` on the following call.
+   Marking it complete before serializing the response would make captured
+   evidence self-consistent.
+4. The top-level infra-tools version did not change across this refresh even
+   though behavior and bundled components changed. Including a build revision
+   or setup bundle version would make feedback reports reproducible.
+
+The managed Playwright fallback also remained healthy and kept every artifact
+under `~/.local/state/infra_tools/playwright-mcp`. Its screenshots carried only
+the documented Chromium `ReadPixels` warnings, with zero application errors.
+The fallback remains valuable for VM-origin checks, but it was not needed to
+work around the game once T3 was restored.

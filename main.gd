@@ -1,5 +1,7 @@
 extends Control
 
+signal round_transition_finished
+
 const Backdrop := preload("res://backdrop.gd")
 const MarkCell := preload("res://mark_cell.gd")
 const WinLine := preload("res://win_line.gd")
@@ -15,6 +17,8 @@ const TEXT := Color("20282c")
 const MUTED := Color("69716e")
 const ACCENT := Color("d5a82e")
 const SAVE_PATH := "user://match_scores.cfg"
+const ROUND_TURN_OUT_SECONDS := 0.22
+const ROUND_TURN_IN_SECONDS := 0.30
 const CPU_LEVELS := ["CASUAL", "TACTICAL", "PERFECT"]
 const WIN_LINES := [
 	[0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -26,6 +30,7 @@ var board: Array[String] = ["", "", "", "", "", "", "", "", ""]
 var turn := "X"
 var game_over := false
 var cpu_thinking := false
+var round_transitioning := false
 var vs_cpu := true
 var cpu_level := 1
 var round_id := 0
@@ -57,6 +62,7 @@ var about_close_button: Button
 var about_body_label: Label
 var board_card: PanelContainer
 var win_line: Control
+var round_transition_tween: Tween
 var rng := RandomNumberGenerator.new()
 
 
@@ -474,7 +480,7 @@ func _about_style() -> StyleBoxFlat:
 func _cell_pressed(index: int) -> void:
 	if index < 0 or index >= board.size():
 		return
-	if game_over or cpu_thinking or board[index] != "":
+	if game_over or cpu_thinking or round_transitioning or board[index] != "":
 		return
 	if vs_cpu and turn == "O":
 		return
@@ -620,8 +626,11 @@ func _update_ui() -> void:
 		cells[i].set_mark(board[i], X_COLOR if board[i] == "X" else O_COLOR)
 		var fill := WIN_COLOR if i in winning_cells else CELL
 		cells[i].add_theme_stylebox_override("disabled", _cell_style(fill))
-		cells[i].disabled = board[i] != "" or game_over or cpu_thinking
-	if game_over:
+		cells[i].disabled = board[i] != "" or game_over or cpu_thinking or round_transitioning
+	if round_transitioning:
+		status_label.text = "TURNING THE PAGE…"
+		round_button.text = "ONE MOMENT"
+	elif game_over:
 		status_label.text = "DRAW — BOARD FULL" if winning_cells.is_empty() else _win_message(turn)
 		round_button.text = "PLAY AGAIN"
 	elif cpu_thinking:
@@ -641,8 +650,13 @@ func _update_ui() -> void:
 	local_button.button_pressed = not vs_cpu
 	difficulty_button.visible = vs_cpu
 	difficulty_button.text = "DIFFICULTY: %s" % _difficulty_name()
-	score_x_card.add_theme_stylebox_override("panel", _score_card_style(X_COLOR, not game_over and turn == "X"))
-	score_o_card.add_theme_stylebox_override("panel", _score_card_style(O_COLOR, not game_over and turn == "O"))
+	score_x_card.add_theme_stylebox_override("panel", _score_card_style(X_COLOR, not game_over and not round_transitioning and turn == "X"))
+	score_o_card.add_theme_stylebox_override("panel", _score_card_style(O_COLOR, not game_over and not round_transitioning and turn == "O"))
+	round_button.disabled = round_transitioning
+	clear_button.disabled = round_transitioning
+	cpu_button.disabled = round_transitioning
+	local_button.disabled = round_transitioning
+	difficulty_button.disabled = round_transitioning
 	if not reset_armed:
 		clear_button.text = "RESET SCORES"
 
@@ -671,6 +685,8 @@ func _hide_about() -> void:
 
 
 func _set_mode(cpu_mode: bool) -> void:
+	if round_transitioning:
+		return
 	if vs_cpu == cpu_mode:
 		_update_ui()
 		return
@@ -680,6 +696,8 @@ func _set_mode(cpu_mode: bool) -> void:
 
 
 func _cycle_difficulty() -> void:
+	if round_transitioning:
+		return
 	cpu_level = (cpu_level + 1) % CPU_LEVELS.size()
 	_save_scores()
 	_update_ui()
@@ -694,16 +712,73 @@ func _difficulty_name() -> String:
 
 
 func _start_new_round() -> void:
+	if round_transitioning:
+		return
 	_disarm_reset()
 	round_id += 1
+	cpu_thinking = false
+	round_transitioning = true
+	_update_ui()
+	board_card.pivot_offset = board_card.size * 0.5
+	round_transition_tween = create_tween()
+	round_transition_tween.tween_property(
+		board_card,
+		"scale",
+		Vector2(0.035, 0.94),
+		ROUND_TURN_OUT_SECONDS
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	round_transition_tween.parallel().tween_property(
+		board_card,
+		"rotation",
+		-0.015,
+		ROUND_TURN_OUT_SECONDS
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	round_transition_tween.parallel().tween_property(
+		board_card,
+		"modulate",
+		Color("d8cfb9"),
+		ROUND_TURN_OUT_SECONDS
+	)
+	round_transition_tween.tween_callback(_swap_round_sheet)
+	round_transition_tween.tween_property(
+		board_card,
+		"scale",
+		Vector2.ONE,
+		ROUND_TURN_IN_SECONDS
+	).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	round_transition_tween.parallel().tween_property(
+		board_card,
+		"rotation",
+		0.0,
+		ROUND_TURN_IN_SECONDS
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	round_transition_tween.parallel().tween_property(
+		board_card,
+		"modulate",
+		Color.WHITE,
+		ROUND_TURN_IN_SECONDS
+	)
+	round_transition_tween.tween_callback(_finish_round_transition)
+
+
+func _swap_round_sheet() -> void:
 	board = ["", "", "", "", "", "", "", "", ""]
 	turn = "X"
 	game_over = false
-	cpu_thinking = false
 	winning_cells.clear()
 	if win_line:
 		win_line.clear_win()
 	_update_ui()
+
+
+func _finish_round_transition() -> void:
+	board_card.scale = Vector2.ONE
+	board_card.rotation = 0.0
+	board_card.modulate = Color.WHITE
+	round_transitioning = false
+	round_transition_tween = null
+	_update_ui()
+	round_transition_finished.emit()
 
 
 func _clear_score() -> void:
@@ -716,6 +791,8 @@ func _clear_score() -> void:
 
 
 func _request_score_reset() -> void:
+	if round_transitioning:
+		return
 	if reset_armed:
 		_clear_score()
 		return

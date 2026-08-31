@@ -27,7 +27,17 @@ func _init() -> void:
 	assert_equal(game._tactical_cpu_move(), 2, "tactical CPU blocks an immediate loss")
 
 	game.vs_cpu = false
+	game.board.assign(["X", "", "", "", "", "", "", "", ""])
+	game._update_ui()
 	game._start_new_round()
+	assert_equal(game.round_transitioning, true, "new round starts a board transition")
+	assert_equal(game.board[0], "X", "old board remains visible at transition start")
+	assert_equal(game.status_label.text, "TURNING THE PAGE…", "transition explains the short pause")
+	assert_equal(game.cells[1].disabled, true, "transition locks empty board cells")
+	await game.round_transition_finished
+	assert_equal(game.round_transitioning, false, "new round unlocks after the transition")
+	assert_equal(game.board.has("X"), false, "board clears during the hidden midpoint")
+	assert_equal(game.board_card.scale, Vector2.ONE, "board finishes at its resting scale")
 	assert_equal(game.status_label.text, "PLAYER X TO MOVE", "local turn prompt reads naturally")
 	game._cell_pressed(0)
 	game._cell_pressed(3)
@@ -43,7 +53,7 @@ func _init() -> void:
 	assert_equal(game.reset_armed, true, "score reset asks for confirmation")
 	assert_equal(game.clear_button.text, "CONFIRM RESET", "score reset labels the confirm action")
 	game._request_score_reset()
-	await process_frame
+	await game.round_transition_finished
 	assert_equal(game.scores["local"]["x"], 0, "confirmed score reset clears the current mode")
 	assert_equal(game.clear_button.text, "RESET SCORES", "score reset returns to its default label")
 
