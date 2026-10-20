@@ -6,6 +6,11 @@ This game was developed to test infra-tools agentic VMs and Godot web developmen
 
 ## Play locally
 
+Use Godot 4.7.2 (the release workflow's version) and matching Web export
+templates when exporting. Basaltwater on Debian is the reference environment;
+the native editor, tests, and exports also work with a manual Godot installation
+on other systems, including CachyOS and Windows 11.
+
 ```bash
 godot --path .
 ```
@@ -16,8 +21,30 @@ Click or tap a square, or use keys `1`–`9` to place a mark. Press `R` to start
 
 ```bash
 godot --headless --path . --script tests/test_main.gd
+mkdir -p build
 godot --headless --path . --export-release Web build/tictactoe.html
 ```
+
+Create `build/` manually or with PowerShell's `New-Item -ItemType Directory -Force build`
+on Windows. Generated `build/` and `.godot/` are ignored; preserve source, saved
+games, and useful review captures. Gameplay checks change saved score/preferences
+state, so run them with an isolated test user-data profile. On Linux, for example:
+
+```bash
+XDG_DATA_HOME="$(mktemp -d)" godot --headless --path . --script tests/test_main.gd
+```
+
+For an authorized managed HTTPS publication, use the shared
+`basaltwater-godot-web` skill:
+
+```bash
+basaltwater-web publish godot three-in-a-row --preset Web --json
+basaltwater-web url three-in-a-row
+basaltwater-web doctor three-in-a-row
+```
+
+Use the returned URL for rendered checks through the installed browser-testing
+skill. Native local exports do not require Basaltwater or publication.
 
 ## Releases
 
