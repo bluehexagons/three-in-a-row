@@ -47,7 +47,7 @@ jobs:
           printf 'GAME_VERSION=%s\n' "$project_version" >> "$GITHUB_ENV"
 
       - name: Install Godot and export templates
-        uses: chickensoft-games/setup-godot@c233594225991af5aec714e52457cc76d6df8fa2 # v2.4.2
+        uses: chickensoft-games/setup-godot@ac93246ea68518a384c1c280a496e5989341f2f6 # v2.4.3
         with:
           version: 4.7.2
           use-dotnet: false
@@ -80,7 +80,7 @@ jobs:
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
       - name: Create the GitHub release
         shell: bash
