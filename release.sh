@@ -87,6 +87,7 @@ version_updated=true
 git diff --check
 
 printf 'Preparing %s (current version: %s)\n' "$tag" "$current"
+"$godot_bin" --headless --path . --import
 "$godot_bin" --headless --path . --script tests/test_main.gd
 "$godot_bin" --headless --path . --export-release Web "$release_tmp/index.html"
 [[ -s "$release_tmp/index.html" ]] || fail "Godot did not produce index.html"

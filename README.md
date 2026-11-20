@@ -12,14 +12,16 @@ the native editor, tests, and exports also work with a manual Godot installation
 on other systems, including CachyOS and Windows 11.
 
 ```bash
+godot --headless --path . --import
 godot --path .
 ```
 
-Click or tap a square, or use keys `1`–`9` to place a mark. Press `R` to start a new round, `D` to change the CPU difficulty, or `T` to switch between light and dark themes.
+Click or tap a square, or use keys `1`–`9` to place a mark. Use Tab and the arrow keys to focus a square, then Enter or Space to play. Press `R` to start a new round, `D` to change the CPU difficulty, or `T` to switch themes. Open **?** for the rules, shortcuts, and reduced-motion setting.
 
 ## Validate and export
 
 ```bash
+godot --headless --path . --import
 godot --headless --path . --script tests/test_main.gd
 mkdir -p build
 godot --headless --path . --export-release Web build/tictactoe.html
@@ -38,9 +40,9 @@ For an authorized managed HTTPS publication, use the shared
 `basaltwater-godot-web` skill:
 
 ```bash
-basaltwater-web publish godot three-in-a-row --preset Web --json
-basaltwater-web url three-in-a-row
-basaltwater-web doctor three-in-a-row
+basaltwater-web publish godot tic-tac-toe --preset Web --json
+basaltwater-web url tic-tac-toe
+basaltwater-web doctor tic-tac-toe
 ```
 
 Use the returned URL for rendered checks through the installed browser-testing

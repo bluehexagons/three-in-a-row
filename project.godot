@@ -4,17 +4,17 @@ config/version="0.2"
 run/main_scene="res://main.tscn"
 
 [display]
-window/size/viewport_width=720
-window/size/viewport_height=900
-window/size/window_width_override=720
-window/size/window_height_override=900
+window/size/viewport_width=400
+window/size/viewport_height=760
+window/size/window_width_override=1100
+window/size/window_height_override=790
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-environment/defaults/default_clear_color=Color(0.933, 0.914, 0.863, 1)
+environment/defaults/default_clear_color=Color(0.945, 0.922, 0.863, 1)
 
 [web]
 export/enable_http_server=true

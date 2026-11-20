@@ -90,10 +90,18 @@ func _init() -> void:
 	game._request_score_reset()
 	await process_frame
 	assert_equal(game.reset_armed, true, "score reset asks for confirmation")
-	assert_equal(game.clear_button.text, "CONFIRM RESET", "score reset labels the confirm action")
+	assert_equal(game.reset_overlay.visible, true, "score reset opens a confirmation dialog")
+	assert_equal(root.gui_get_focus_owner(), game.reset_cancel_button, "score reset focuses Cancel")
+	game.reset_cancel_button.pressed.emit()
+	assert_equal(game.reset_overlay.visible, false, "cancel closes the score reset dialog")
+	assert_equal(game.scores["local"]["x"], 1, "cancel preserves this mode's score")
+	assert_equal(game.game_over, true, "cancel preserves the finished round")
+	game.scores["cpu"]["o"] = 2
 	game._request_score_reset()
+	game.reset_confirm_button.pressed.emit()
 	await game.round_transition_finished
 	assert_equal(game.scores["local"]["x"], 0, "confirmed score reset clears the current mode")
+	assert_equal(game.scores["cpu"]["o"], 2, "confirmed score reset preserves the other mode")
 	assert_equal(game.clear_button.text, "RESET SCORES", "score reset returns to its default label")
 	assert_equal(game.win_line.line_cells, [], "the next round clears the restored winning line")
 
@@ -127,6 +135,18 @@ func _init() -> void:
 	)
 	game._hide_about()
 	assert_equal(game.about_overlay.visible, false, "about screen returns to the game")
+
+	game._set_difficulty(2)
+	assert_equal(game.difficulty_button.selected, 2, "difficulty picker shows the selected CPU level")
+	game._toggle_motion()
+	assert_equal(game.reduced_motion, true, "reduced motion can be enabled")
+	game._start_new_round()
+	await game.round_transition_finished
+	game._cell_pressed(4)
+	assert_equal(game.cells[4].reveal, 1.0, "reduced motion places a full mark immediately")
+	var config := ConfigFile.new()
+	config.load(game.SAVE_PATH)
+	assert_equal(config.get_value("settings", "motion"), "reduced", "reduced motion persists")
 
 	if failures == 0:
 		print("PASS: all gameplay checks")

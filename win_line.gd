@@ -1,5 +1,6 @@
 extends Control
 
+var grid: GridContainer
 var line_cells: Array[int] = []
 var ink := Color("20282c")
 var marker := Color("d5a82e")
@@ -13,7 +14,7 @@ var active_tween: Tween
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	resized.connect(queue_redraw)
+	grid.sort_children.connect(queue_redraw)
 
 
 func set_palette(foreground: Color, accent: Color) -> void:
@@ -45,24 +46,21 @@ func clear_win() -> void:
 
 
 func _draw() -> void:
-	if line_cells.size() != 3:
+	if line_cells.size() != 3 or progress <= 0.0:
 		return
 	var start := _cell_center(line_cells[0])
 	var finish := _cell_center(line_cells[2])
-	var animated_finish := start.lerp(finish, progress)
 	var direction := start.direction_to(finish)
-	var normal := Vector2(-direction.y, direction.x)
-	draw_line(start + normal * 4.0, animated_finish + normal * 4.0, Color(ink, 0.75), 5.0, true)
-	draw_line(start, animated_finish, marker, 11.0, true)
-	if progress > 0.97:
-		draw_line(start - normal * 10.0, start + normal * 10.0, ink, 3.0, true)
-		draw_line(finish - normal * 10.0, finish + normal * 10.0, ink, 3.0, true)
+	var extension := minf(size.x, size.y) * 0.08
+	start -= direction * extension
+	finish += direction * extension
+	var animated_finish := start.lerp(finish, progress)
+	draw_line(start, animated_finish, ink, 8.0, true)
+	draw_line(start, animated_finish, marker, 5.0, true)
+	draw_circle(start, 4.0, marker, true, -1.0, true)
+	draw_circle(animated_finish, 4.0, marker, true, -1.0, true)
 
 
 func _cell_center(index: int) -> Vector2:
-	var column := index % 3
-	var row := index / 3
-	return Vector2(
-		(float(column) + 0.5) * size.x / 3.0,
-		(float(row) + 0.5) * size.y / 3.0
-	)
+	var cell := grid.get_child(index) as Control
+	return cell.position + cell.size * 0.5

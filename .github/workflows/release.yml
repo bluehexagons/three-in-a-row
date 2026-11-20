@@ -54,7 +54,9 @@ jobs:
           include-templates: true
 
       - name: Run gameplay tests
-        run: godot --headless --path . --script tests/test_main.gd
+        run: |
+          godot --headless --path . --import
+          godot --headless --path . --script tests/test_main.gd
 
       - name: Export and package the web build
         shell: bash
@@ -63,6 +65,7 @@ jobs:
           godot --headless --path . --export-release Web build/index.html
           test -s build/index.html
           cp LICENSE build/LICENSE.txt
+          cp fonts/OFL.txt build/BricolageGrotesque-OFL.txt
           archive="three-in-a-row-${GAME_VERSION}-web.zip"
           (cd build && zip -9 -r "../release/$archive" .)
           unzip -Z1 "release/$archive" | grep -Fx index.html
