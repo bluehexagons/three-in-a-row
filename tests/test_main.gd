@@ -69,6 +69,13 @@ func _init() -> void:
 	assert_equal(game.status_label.text, "PLAYER X TO MOVE", "local turn prompt reads naturally")
 	game._cell_pressed(0)
 	game._cell_pressed(3)
+	game._toggle_theme()
+	await process_frame
+	assert_equal(game.cells[0].mark, "X", "theme changes keep X on the board")
+	assert_equal(game.cells[3].mark, "O", "theme changes keep O on the board")
+	assert_equal(game.cells[0].reveal, 1.0, "theme changes keep X visible")
+	assert_equal(game.cells[3].reveal, 1.0, "theme changes keep O visible")
+	assert_equal(game.status_label.text, "PLAYER X TO MOVE", "theme changes preserve the active turn")
 	game._cell_pressed(1)
 	game._cell_pressed(4)
 	game._cell_pressed(2)
@@ -76,6 +83,10 @@ func _init() -> void:
 	assert_equal(game.winning_cells, [0, 1, 2], "winning cells are retained for highlighting")
 	assert_equal(game.status_label.text, "PLAYER X WINS", "local win message agrees with its subject")
 	assert_equal(game.round_button.text, "PLAY AGAIN", "finished round offers a replay")
+	game._toggle_theme()
+	await process_frame
+	assert_equal(game.win_line.line_cells, [0, 1, 2], "theme changes keep the winning line")
+	assert_equal(game.win_line.progress, 1.0, "theme changes restore the full winning line")
 	game._request_score_reset()
 	await process_frame
 	assert_equal(game.reset_armed, true, "score reset asks for confirmation")
@@ -84,6 +95,7 @@ func _init() -> void:
 	await game.round_transition_finished
 	assert_equal(game.scores["local"]["x"], 0, "confirmed score reset clears the current mode")
 	assert_equal(game.clear_button.text, "RESET SCORES", "score reset returns to its default label")
+	assert_equal(game.win_line.line_cells, [], "the next round clears the restored winning line")
 
 	game.vs_cpu = true
 	assert_equal(game._win_message("X"), "YOU WIN", "one-player win addresses the player directly")

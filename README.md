@@ -1,4 +1,4 @@
-# Tic-Tac-Toe
+# Three in a Row
 
 A compact, print-inspired Godot 4 tic-tac-toe game for the web. Choose a casual, tactical, or perfect CPU opponent, or share the board with a second local player. Each mode keeps its own scoreboard between sessions.
 
@@ -15,7 +15,7 @@ on other systems, including CachyOS and Windows 11.
 godot --path .
 ```
 
-Click or tap a square, or use keys `1`–`9` to place a mark. Press `R` to start a new round and `D` to change the CPU difficulty.
+Click or tap a square, or use keys `1`–`9` to place a mark. Press `R` to start a new round, `D` to change the CPU difficulty, or `T` to switch between light and dark themes.
 
 ## Validate and export
 
@@ -62,16 +62,17 @@ Pages source, then allow the `v*` tag pattern in the `github-pages`
 environment's deployment branches and tags. This keeps Pages deployments
 restricted to version tags.
 
-From a clean, up-to-date `main` branch, pass the next version explicitly:
+From a clean, up-to-date `main` branch, run the release script:
 
 ```bash
-./release.sh 0.1
+./release.sh
 ```
 
 The script requires local `main` to exactly match `origin/main`, updates the
 project version, runs the tests and a Web export, creates a release commit and
 annotated tag, then pushes the branch and tag atomically. With no argument, it
-increments the last numeric component of the current version.
+increments the last numeric component of the current version. Pass a version
+explicitly when you need a different increment, for example `./release.sh 1.0`.
 
 ## License
 

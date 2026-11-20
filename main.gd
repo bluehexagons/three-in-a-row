@@ -531,7 +531,6 @@ func _cell_pressed(index: int) -> void:
 
 func _place_mark(index: int) -> void:
 	board[index] = turn
-	var placed_mark := turn
 	winning_cells = _winning_line(turn)
 	if not winning_cells.is_empty():
 		game_over = true
@@ -546,7 +545,7 @@ func _place_mark(index: int) -> void:
 	_update_ui()
 	_animate_mark(index)
 	if not winning_cells.is_empty():
-		win_line.show_win(winning_cells, X_COLOR if placed_mark == "X" else O_COLOR)
+		win_line.show_win(winning_cells)
 		_animate_victory()
 
 
@@ -775,6 +774,11 @@ func _rebuild_ui_for_theme() -> void:
 	cells.clear()
 	_build_ui()
 	_update_ui()
+	for cell in cells:
+		if cell.mark != "":
+			cell.reveal = 1.0
+	if not winning_cells.is_empty():
+		win_line.show_win(winning_cells, false)
 	theme_button.grab_focus()
 
 

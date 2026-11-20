@@ -22,10 +22,14 @@ func set_palette(foreground: Color, accent: Color) -> void:
 	queue_redraw()
 
 
-func show_win(cells: Array[int], _color: Color) -> void:
+func show_win(cells: Array[int], animate := true) -> void:
 	if active_tween:
 		active_tween.kill()
+		active_tween = null
 	line_cells = cells.duplicate()
+	if not animate:
+		progress = 1.0
+		return
 	progress = 0.0
 	active_tween = create_tween()
 	active_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
